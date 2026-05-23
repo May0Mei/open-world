@@ -18,6 +18,7 @@ outputs/
 logs/
 videos/
 
+assets/
 bash_scripts/
 checkpoints/
 data/
