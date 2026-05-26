@@ -116,7 +116,20 @@ class CtrlWorldWorldModel(VidWMWorldModel):
         # ---- expose the same attribute layout VidWMWorldModel.rollout reads ----
         # CrtlWorld wraps the pipeline (with UNet/VAE/image_encoder swapped in)
         # plus the action encoder and CLIP text encoder + tokenizer.
-        self.pipeline = model.pipeline
+        # CrtlWorld.__init__ builds a base StableVideoDiffusionPipeline, which
+        # doesn't accept the action/history kwargs our rollout passes. Rebuild
+        # as CtrlWorldDiffusionPipeline (a subclass with the matching __call__)
+        # reusing the same components.
+        from ctrl_world.pipeline_ctrl_world import CtrlWorldDiffusionPipeline  # noqa: E402
+
+        base_pipe = model.pipeline
+        self.pipeline = CtrlWorldDiffusionPipeline(
+            vae=base_pipe.vae,
+            image_encoder=base_pipe.image_encoder,
+            unet=base_pipe.unet,
+            scheduler=base_pipe.scheduler,
+            feature_extractor=base_pipe.feature_extractor,
+        )
         self.action_encoder = model.action_encoder
         self.text_encoder = model.text_encoder
         self.tokenizer = model.tokenizer
