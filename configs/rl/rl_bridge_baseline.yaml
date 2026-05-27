@@ -1,0 +1,79 @@
+# DSRL RL fine-tuning: Bridge dataset, DynUQ world model, BridgeBC base policy.
+# BASELINE: uses only RGB predictions from the world model (confidence ignored).
+#
+# Algorithm: PixelSAC predicts diffusion noise → frozen BridgeBCPolicy denoises
+# to actions → DynUQWorldModel simulates rollout → reward from downstream model.
+#
+# Steps:
+#   1. Train BC policy: python scripts/train_bridge_bc.py --output_dir outputs/bridge_bc
+#   2. Run RL:          python scripts/run_rl_finetune.py --config configs/rl/rl_bridge_baseline.yaml
+#
+# World model checkpoint (precomputed):
+#   /n/fs/wm-uq/projects/wm_dynamics_uq/ac_video_model_uq/dynuq/scripts/outputs/
+#   checkpoints/bridge/20251105_044251_train_bridge_256_conf_pred/ckpt_000050000.pt
+
+world_model:
+  name: dynuq
+  params:
+    repo_path: /n/fs/not-fmrl/Projects/apple_project/ac_video_model_uq
+    checkpoint_path: /n/fs/wm-uq/projects/wm_dynamics_uq/ac_video_model_uq/dynuq/scripts/outputs/checkpoints/bridge/20251105_044251_train_bridge_256_conf_pred/ckpt_000050000.pt
+    model_config_path: /n/fs/wm-uq/projects/wm_dynamics_uq/ac_video_model_uq/dynuq/scripts/outputs/checkpoints/bridge/20251105_044251_train_bridge_256_conf_pred/config.yaml
+    ref_latent_dir: /n/fs/wm-uq/projects/wm_dynamics_uq/ac_video_model_uq/dynuq/scripts/gt_latent/single_frame
+    input_h: 256
+    input_w: 256
+    action_dim: 7
+    patch_size: 2
+    model_dim: 512
+    layers: 49
+    heads: 4
+    vae_type: sd
+    timesteps: 1000
+    sampling_timesteps: 10
+    enable_confidence_prediction: true
+    conf_err_threshold: 0.85
+    use_ema: true
+    # Baseline: no confidence-based trajectory filtering
+    conf_filter_threshold: null
+
+policy:
+  name: bridge_bc
+  params:
+    # trained by: python scripts/train_bridge_bc.py --output_dir outputs/bridge_bc
+    checkpoint_path: outputs/bridge_bc/best.pt
+    action_dim: 7
+    feature_dim: 256
+    device: cuda
+
+reward_model:
+  name: robometer
+  params:
+    model_path: robometer/Robometer-4B
+    num_views: 1
+    fps: 2.0
+    timeout_s: 120.0
+
+scheduler:
+  chunk_size: 8
+
+train_params:
+  seed: 42
+  max_steps: 20000
+  batch_size: 256
+  resize_image: 128
+  action_horizon: 8
+  noise_dim: 56            # horizon(8) × action_dim(7) — flat DDPM initial noise vector
+  max_chunks_per_episode: 8
+  num_initial_trajs: 10
+  multi_grad_step: 1
+  discount: 0.99
+  log_interval: 50
+  checkpoint_interval: 1000
+  output_dir: outputs/rl_bridge_baseline
+  encoder_type: resnet_small
+  exterior_view_name: exterior_right
+  instruction: "pick up the object"
+  dataset_path: /n/fs/not-fmrl/Projects/wm_alignment/cosmos-predict2/datasets/bridge
+  # Baseline: confidence filtering disabled (null)
+  conf_filter_threshold: null
+  wandb_project: rl_bridge
+  wandb_run: baseline

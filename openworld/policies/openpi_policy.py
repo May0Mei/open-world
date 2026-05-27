@@ -116,6 +116,51 @@ class OpenPIPolicy(Policy):
 
         return self._pending_actions.pop(0)
 
+    def infer_chunk_with_noise(
+        self,
+        observation: Any,
+        state: Any,
+        noise: np.ndarray,
+        instruction: Optional[str] = None,
+    ) -> list[Any]:
+        """Query OpenPI's diffusion with SAC-controlled noise; return adapted action list.
+
+        Used by :class:`~openworld.runners.rl_finetune_runner.RLFineTuneRunner` for
+        DSRL-style RL fine-tuning.  The ``noise`` array — typically a single SAC
+        action row tiled across the action horizon — seeds the flow-matching
+        denoiser, biasing it toward high-reward trajectories.
+
+        Args:
+            observation: Current visual observation (image or dict of views).
+            state: Current robot state dict with joint/gripper info.
+            noise: Shape ``(action_horizon, noise_dim)`` — initial diffusion noise.
+                   Construct by tiling a ``(1, noise_dim)`` SAC action with
+                   ``np.repeat(sac_noise, action_horizon, axis=0)``.
+            instruction: Optional text prompt override.
+
+        Returns:
+            List of adapted actions (cartesian dicts with ``env_action`` /
+            ``state_update`` keys, or raw arrays if no adapter is configured).
+        """
+        if self._policy is None:
+            if self.server_url is None:
+                raise RuntimeError(
+                    "OpenPIPolicy.infer_chunk_with_noise() requires either a loaded "
+                    "checkpoint (call load_checkpoint()) or a server_url."
+                )
+            self._policy = self._build_websocket_policy(self.server_url)
+
+        openpi_obs = self._build_openpi_observation(
+            observation=observation,
+            state=state,
+            instruction=instruction,
+        )
+        result = self._policy.infer(openpi_obs, noise=noise)
+        predicted = np.asarray(result["actions"], dtype=np.float32)
+        if predicted.ndim == 1:
+            predicted = predicted[np.newaxis, :]
+        return self._adapt_action_chunk(predicted, state)
+
     def load_checkpoint(self, checkpoint_path: str) -> None:
         self._policy = load_policy_from_checkpoint(
             config_name=self.config_name,

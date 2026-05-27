@@ -1,0 +1,59 @@
+# Debug version of rl_bridge_baseline.yaml — 3 gradient steps, no reward model
+# Used to verify the training loop runs end-to-end before submitting the full job.
+
+world_model:
+  name: dynuq
+  params:
+    repo_path: /n/fs/not-fmrl/Projects/apple_project/ac_video_model_uq
+    checkpoint_path: /n/fs/wm-uq/projects/wm_dynamics_uq/ac_video_model_uq/dynuq/scripts/outputs/checkpoints/bridge/20251105_044251_train_bridge_256_conf_pred/ckpt_000050000.pt
+    model_config_path: /n/fs/wm-uq/projects/wm_dynamics_uq/ac_video_model_uq/dynuq/scripts/outputs/checkpoints/bridge/20251105_044251_train_bridge_256_conf_pred/config.yaml
+    ref_latent_dir: /n/fs/wm-uq/projects/wm_dynamics_uq/ac_video_model_uq/dynuq/scripts/gt_latent/single_frame
+    input_h: 256
+    input_w: 256
+    action_dim: 7
+    patch_size: 2
+    model_dim: 512
+    layers: 49
+    heads: 4
+    vae_type: sd
+    timesteps: 1000
+    sampling_timesteps: 10
+    enable_confidence_prediction: true
+    conf_err_threshold: 0.85
+    use_ema: true
+    conf_filter_threshold: null
+
+policy:
+  name: bridge_bc
+  params:
+    checkpoint_path: outputs/bridge_bc/best.pt
+    action_dim: 7
+    feature_dim: 256
+    device: cuda
+
+reward_model:
+  name: dummy
+
+scheduler:
+  chunk_size: 8
+
+train_params:
+  seed: 42
+  max_steps: 3
+  batch_size: 4
+  resize_image: 128
+  action_horizon: 8
+  noise_dim: 56
+  max_chunks_per_episode: 2
+  num_initial_trajs: 2
+  multi_grad_step: 1
+  discount: 0.99
+  log_interval: 1
+  checkpoint_interval: 0
+  video_save_interval: 999
+  output_dir: outputs/rl_bridge_baseline_debug
+  encoder_type: resnet_small
+  exterior_view_name: exterior_right
+  instruction: "pick up the object"
+  dataset_path: /n/fs/not-fmrl/Projects/wm_alignment/cosmos-predict2/datasets/bridge
+  conf_filter_threshold: null

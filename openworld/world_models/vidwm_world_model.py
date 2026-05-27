@@ -798,6 +798,11 @@ class VidWMWorldModel(WorldModel):
                 raw = raw.reshape(1, -1)
             initial_state = raw[0]
 
+        # Truncate to action_dim — robot["state"] is often 8D (7 joints + gripper)
+        # while the world model expects 7D cartesian actions.
+        if initial_state.shape[0] > cfg.action_dim:
+            initial_state = initial_state[: cfg.action_dim]
+
         neg_indices = [abs(idx) for idx in cfg.history_idx if idx < 0]
         init_size = max(neg_indices) if neg_indices else len(cfg.history_idx)
         init_size = max(init_size, len(cfg.history_idx))

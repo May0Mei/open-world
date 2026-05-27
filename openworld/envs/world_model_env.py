@@ -101,6 +101,8 @@ class WorldModelEnv:
                 "state": self._current_state,
                 "did_rollout": False,
                 "predicted_frames": [],
+                "confidence": None,
+                "confidence_frames": [],
             }
 
         # Trigger world-model rollout
@@ -124,6 +126,8 @@ class WorldModelEnv:
             "state": self._current_state,
             "did_rollout": True,
             "predicted_frames": list(self._predicted_frames),
+            "confidence": result.get("confidence"),
+            "confidence_frames": result.get("confidence_frames", []),
         }
 
     # ------------------------------------------------------------------

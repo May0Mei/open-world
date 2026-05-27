@@ -123,22 +123,25 @@ def score_episode(
     exp_config,
     device: torch.device,
     fps: float = 2.0,
+    num_views: int = 3,
 ) -> dict:
-    """Score a single video by splitting into 3 views and scoring each.
+    """Score a single video, optionally splitting into multiple horizontal views.
 
-    The generated videos have 3 camera views concatenated horizontally.
-    Robometer expects a single view, so we split the width into 3 equal
-    parts, score each independently, and return per-view results plus
-    the average across views.
+    num_views=3 (default): video has 3 camera views concatenated horizontally
+        (DROID/irom evaluation format). Each view is scored independently.
+    num_views=1: single-view video (e.g. bridge dataset). Scored directly.
     """
     frames = load_video_frames(video_path, fps=fps)  # (T, H, W, C)
-    W = frames.shape[2]
-    view_width = W // 3
 
-    view_frames = [
-        frames[:, :, i * view_width : (i + 1) * view_width, :]
-        for i in range(3)
-    ]
+    if num_views == 1:
+        view_frames = [frames]
+    else:
+        W = frames.shape[2]
+        view_width = W // num_views
+        view_frames = [
+            frames[:, :, i * view_width : (i + 1) * view_width, :]
+            for i in range(num_views)
+        ]
 
     per_view_results = {}
     all_progress = []
@@ -204,6 +207,12 @@ def main() -> None:
         default=2.0,
         help="FPS to sample from videos (default: 2.0)",
     )
+    parser.add_argument(
+        "--num-views",
+        type=int,
+        default=3,
+        help="Number of horizontal views in the video (default: 3 for DROID; 1 for bridge)",
+    )
     args = parser.parse_args()
 
     manifest = json.loads(Path(args.manifest).read_text())
@@ -244,6 +253,7 @@ def main() -> None:
                 exp_config=exp_config,
                 device=device,
                 fps=args.fps,
+                num_views=args.num_views,
             )
             info["id"] = ep_id
             results.append(info)

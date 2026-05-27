@@ -8,6 +8,18 @@ from openworld.utils.optional_dependencies import (
 )
 
 POLICY_REGISTRY: dict[str, BackendSpec] = {
+    "dummy": BackendSpec(
+        module_path="openworld.policies.dummy_policy",
+        class_name="DummyPolicy",
+        extra_name=None,
+        required_modules=(),
+    ),
+    "bridge_bc": BackendSpec(
+        module_path="openworld.policies.bridge_bc_policy",
+        class_name="BridgeBCPolicy",
+        extra_name=None,
+        required_modules=(),
+    ),
     "openpi": BackendSpec(
         module_path="openworld.policies.openpi_policy",
         class_name="OpenPIPolicy",
